@@ -76,7 +76,7 @@ Build and run the evaluation agent inside a container:
    ```bash
    docker build -t cyberdefense-env .
    docker run -e GEMINI_API_KEY="your-api-key-here" cyberdefense-env
-```
+   ```
 ---
 
 ## Running the Autonomous Evaluation
@@ -85,6 +85,6 @@ This project includes a fully autonomous baseline agent (evaluate_agent.py) that
 To watch the AI act as an autonomous SOC analyst, run:
    ```bash
    python evaluate_agent.py
-```
+   ```
 ### Expected Output:
 The script will initialize the environment, parse the ServerState JSON to the LLM, and execute the LLM's structured JSON decisions until the threat is neutralized and a score of 1.0 is achieved.
