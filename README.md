@@ -69,9 +69,11 @@ You can run this environment locally or build the included Docker container.
    ```bash
    pip install -r requirements.txt
 3. Set your LLM API key as an environment variable (the baseline agent uses the Gemini API via OpenAI compatibility):
+   ```bash
    export GEMINI_API_KEY="your-api-key-here"
 ### Option 2: Docker
 Build and run the evaluation agent inside a container:
+   ```bash
    docker build -t cyberdefense-env .
    docker run -e GEMINI_API_KEY="your-api-key-here" cyberdefense-env
 
@@ -81,6 +83,7 @@ Build and run the evaluation agent inside a container:
 This project includes a fully autonomous baseline agent (evaluate_agent.py) that uses a ReAct (Reasoning and Acting) loop to solve the environment dynamically.
 
 To watch the AI act as an autonomous SOC analyst, run:
+   ```bash
    python evaluate_agent.py
 
 ### Expected Output:
