@@ -13,7 +13,7 @@ from cyber_env.schemas import (
 # Initialize the LLM Client using the Gemini API compatibility endpoint
 # Replace this entire block
 client = OpenAI(
-    api_key="AIzaSyCDT5wyz0jXUEDTSERIVoI1SftT8Pv7ReQ", # <--- Hardcoded here!
+    api_key="GEMINI_API_KEY", # <--- Hardcoded here!
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
