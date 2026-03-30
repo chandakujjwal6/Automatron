@@ -1,0 +1,11 @@
+# Core Framework
+openenv
+
+# Data validation and typed models (Required by OpenEnv spec)
+pydantic>=2.0.0
+
+# Optional: If you plan to build a baseline LLM agent in evaluate.py 
+# that calls an API (like Groq, OpenAI, or Anthropic)
+# requests
+
+openai

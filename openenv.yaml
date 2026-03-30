@@ -1,0 +1,11 @@
+name: "CyberDefenseEnv"
+description: "A simulated SOC environment where an agent mitigates cyber attacks."
+version: "1.0.0"
+entrypoint: "cyber_env.env:CyberDefenseEnv" # Format: module.file:ClassName
+tasks:
+  - name: "task_1"
+    description: "Mitigate an SSH Brute Force attack."
+  - name: "task_2"
+    description: "Eradicate a hidden cryptominer."
+  - name: "task_3"
+    description: "Dismantle an APT backdoor."
