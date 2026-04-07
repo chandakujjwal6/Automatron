@@ -1,3 +1,13 @@
+---
+title: Automatron
+emoji: 💻
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # DevSecOps Remediation Sandbox
 
 **DevSecOps Remediation Sandbox** is a simulated CI/CD pipeline environment built for the OpenEnv standard. It challenges autonomous AI agents to act as DevSecOps engineers fixing security vulnerabilities in codebases.
