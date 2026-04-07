@@ -160,6 +160,3 @@ Respond with JSON only: {"action_type": "...", ...}"""
 
 if __name__ == "__main__":
     main()
-
-if __name__ == "__main__":
-    run_inference()
