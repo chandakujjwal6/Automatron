@@ -13,9 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set default environment variables for inference
-ENV API_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/"
-ENV MODEL_NAME="gemini-2.5-flash-lite"
-
+ENV API_BASE_URL="https://api.openai.com/v1"
+ENV MODEL_NAME="gpt-4o-mini"
 # Expose port for HF Space
 EXPOSE 7860
 
