@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Structured inference script for DevSecOps Remediation Sandbox.
-Follows [START], [STEP], [END] format as required by submission spec.
+DevSecOps OpenEnv Inference Script
+
+Runs the autonomous agent against all 3 tasks with structured logging.
+Follows the [START], [STEP], [END] format strictly for submission validation.
 """
 import os
 import json
@@ -10,143 +12,154 @@ from openai import OpenAI
 from cyber_env.env import DevSecOpsEnv
 from cyber_env.schemas import ReadFileAction, SearchReplaceAction, RunSecurityScanAction, RunUnitTestsAction
 
-# Load environment variables
-API_BASE_URL = os.getenv("API_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
-MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-flash-lite")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("HF_TOKEN")
+# ============================================================================
+# ENVIRONMENT VARIABLES (MANDATORY)
+# ============================================================================
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY")
 
-if not GEMINI_API_KEY:
-    print("[ERROR] GEMINI_API_KEY or HF_TOKEN environment variable not set")
+if not HF_TOKEN:
+    print("[ERROR] HF_TOKEN or OPENAI_API_KEY not provided")
     sys.exit(1)
 
-def run_inference():
-    """Run inference on all 3 tasks with structured logging."""
-    
-    # [START] - Initialization
-    print(json.dumps({
+# ============================================================================
+# LOGGING FUNCTIONS (Per spec)
+# ============================================================================
+
+def log_start(model: str, tasks: list) -> None:
+    """Log inference start."""
+    data = {
         "type": "START",
-        "timestamp": "2024-01-01T00:00:00Z",
-        "model": MODEL_NAME,
-        "api_base": API_BASE_URL,
-        "tasks": ["task_1", "task_2", "task_3"]
-    }))
+        "model": model,
+        "tasks": tasks
+    }
+    print(json.dumps(data))
+
+def log_step(step: int, action: str, reward: float, done: bool, error: str = None) -> None:
+    """Log individual step. Matches sample format exactly."""
+    data = {
+        "type": "STEP",
+        "step": step,
+        "action": action,
+        "reward": reward,
+        "done": done
+    }
+    if error:
+        data["error"] = error
+    print(json.dumps(data))
+
+def log_end(success: bool, score: float, steps: int) -> None:
+    """Log inference end."""
+    data = {
+        "type": "END",
+        "success": success,
+        "score": score,
+        "steps": steps
+    }
+    print(json.dumps(data))
+
+# ============================================================================
+# INFERENCE LOOP
+# ============================================================================
+
+def main():
+    """Main inference function."""
     
-    # Initialize Gemini client
+    # Initialize client
     client = OpenAI(
-        api_key=GEMINI_API_KEY,
+        api_key=HF_TOKEN,
         base_url=API_BASE_URL
     )
     
-    tasks = ["task_1", "task_2", "task_3"]
-    overall_score = 0.0
+    # Log START
+    tasks_list = ["task_1", "task_2", "task_3"]
+    log_start(MODEL_NAME, tasks_list)
     
-    for task_idx, task_name in enumerate(tasks):
+    # System prompt for agent
+    system_prompt = """You are a DevSecOps engineer fixing security vulnerabilities.
+
+Actions available:
+- read_file (filepath)
+- search_and_replace (filepath, old_snippet, new_snippet)
+- run_security_scan ()
+- run_unit_tests ()
+
+Respond with JSON only: {"action_type": "...", ...}"""
+    
+    max_steps_per_task = 10
+    total_rewards = []
+    total_steps = 0
+    
+    for task_name in tasks_list:
         env = DevSecOpsEnv(task_name=task_name)
+        env.reset()
         
-        system_prompt = """You fix code vulnerabilities in a DevSecOps sandbox.
-
-Available actions:
-1. read_file (filepath: str) - Read file content
-2. search_and_replace (filepath: str, old_snippet: str, new_snippet: str) - Fix code
-3. run_security_scan () - Run security scan
-4. run_unit_tests () - Run unit tests
-
-Always respond with JSON only. Example:
-{"action_type": "read_file", "filepath": "app.py"}"""
-        
-        step_count = 0
-        max_steps = 10
-        
-        while step_count < max_steps:
-            step_count += 1
+        for step in range(1, max_steps_per_task + 1):
+            total_steps += 1
             current_score = env.score()
             
-            # Check if task is complete
+            # Early exit if task complete
             if current_score >= 1.0:
-                # [STEP] - Task complete
-                print(json.dumps({
-                    "type": "STEP",
-                    "task": task_name,
-                    "step": step_count,
-                    "score": current_score,
-                    "action": "COMPLETE",
-                    "status": "success"
-                }))
+                log_step(step=step, action="COMPLETE", reward=0.0, done=True)
                 break
             
             # Get current state
-            state = env.state().model_dump_json()
+            state_json = env.state().model_dump_json()
             
             try:
-                # Call Gemini API
+                # Call LLM
                 response = client.chat.completions.create(
                     model=MODEL_NAME,
                     messages=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": state}
+                        {"role": "user", "content": state_json}
                     ],
                     temperature=0.1,
                     max_tokens=500
                 )
                 
                 # Parse response
-                raw = response.choices[0].message.content.strip()
-                if "```" in raw:
-                    raw = raw.split("```")[1].replace("json", "").strip()
+                content = response.choices[0].message.content.strip()
+                if "```" in content:
+                    content = content.split("```")[1].replace("json", "").strip()
                 
-                action_data = json.loads(raw)
-                action_type = action_data.get("action_type")
+                action_dict = json.loads(content)
+                action_type = action_dict.get("action_type")
                 
-                # Map to action classes
-                action_mapping = {
+                # Execute action
+                action_map = {
                     "read_file": ReadFileAction,
                     "search_and_replace": SearchReplaceAction,
                     "run_security_scan": RunSecurityScanAction,
                     "run_unit_tests": RunUnitTestsAction
                 }
                 
-                if action_type not in action_mapping:
+                if action_type not in action_map:
                     raise ValueError(f"Unknown action: {action_type}")
                 
-                # Execute action
-                action_class = action_mapping[action_type]
-                action = action_class(**action_data)
-                env.step(action)
+                action = action_map[action_type](**action_dict)
+                obs, reward, done, info = env.step(action)
                 
-                # [STEP] - Action executed
-                new_score = env.score()
-                print(json.dumps({
-                    "type": "STEP",
-                    "task": task_name,
-                    "step": step_count,
-                    "score": new_score,
-                    "action": action_type,
-                    "status": "success"
-                }))
+                total_rewards.append(reward)
                 
+                log_step(step=step, action=action_type, reward=reward, done=done)
+                
+                if done:
+                    break
+                    
             except Exception as e:
-                # [STEP] - Error occurred
-                print(json.dumps({
-                    "type": "STEP",
-                    "task": task_name,
-                    "step": step_count,
-                    "score": env.score(),
-                    "action": "ERROR",
-                    "error": str(e),
-                    "status": "error"
-                }))
-        
-        task_score = env.score()
-        overall_score += task_score
+                log_step(step=step, action="ERROR", reward=0.0, done=False, error=str(e))
     
-    # [END] - Final results
-    final_score = overall_score / len(tasks)
-    print(json.dumps({
-        "type": "END",
-        "tasks_completed": len(tasks),
-        "overall_score": final_score,
-        "status": "complete"
-    }))
+    # Final score calculation
+    final_score = sum(total_rewards) / len(total_rewards) if total_rewards else 0.0
+    final_score = min(max(final_score, 0.0), 1.0)
+    success = final_score >= 0.5
+    
+    log_end(success=success, score=final_score, steps=total_steps)
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     run_inference()
