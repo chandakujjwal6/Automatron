@@ -1,8 +1,8 @@
-# CyberDefenseEnv
+# DevSecOps Remediation Sandbox
 
-**CyberDefenseEnv** is a simulated Security Operations Center (SOC) environment built for the OpenEnv standard. It challenges autonomous AI agents to act as incident responders defending a simulated Linux server. 
+**DevSecOps Remediation Sandbox** is a simulated CI/CD pipeline environment built for the OpenEnv standard. It challenges autonomous AI agents to act as DevSecOps engineers fixing security vulnerabilities in codebases.
 
-Instead of playing a toy game, the agent must monitor realistic system telemetry—such as running processes, active network connections, and system logs—to detect anomalies. The agent must then take precise, targeted actions to mitigate cyber threats (like SSH brute-forcing, cryptominers, and APT backdoors) without disrupting legitimate system operations. 
+Instead of playing a toy game, the agent must navigate a failing build: reading files, patching vulnerabilities (e.g., hardcoded secrets, command injection, buffer overflows), running security scans, and ensuring unit tests pass—all through a step-by-step interactive loop.
 
 This environment implements the full OpenEnv specification, utilizing strictly typed Pydantic models for reliable Agent-Environment interaction.
 
@@ -10,17 +10,96 @@ This environment implements the full OpenEnv specification, utilizing strictly t
 
 ## Observation Space (`state`)
 
-When the agent calls `env.state()`, it receives a fully typed `ServerState` object representing the current snapshot of the simulated server. 
+When the agent calls `env.state()`, it receives a fully typed `CodebaseState` object representing the current snapshot of the codebase.
 
-### Server State Overview
+### Codebase State Overview
 
 | Field | Data Type | Description |
 | :--- | :--- | :--- |
-| **`system_load`** | `float` | Overall system CPU load percentage (0.0 to 100.0). |
-| **`active_processes`** | `List[ProcessInfo]` | A list of all currently running processes on the server. |
-| **`network_connections`** | `List[NetworkConnection]`| A list of all active incoming and outgoing network TCP/UDP connections. |
-| **`recent_logs`** | `List[LogEntry]` | The last 50 lines of system logs (e.g., auth, syslog). |
-| **`blocked_ips`** | `List[str]` | A list of IP addresses currently dropped by the server's firewall. |
+| **`file_tree`** | `List[str]` | List of file paths in the codebase. |
+| **`current_files`** | `List[FileInfo]` | Contents of files that have been read (path and content). |
+| **`security_scan`** | `Optional[ScanResult]` | Result of the last security scan (tool, output, passed). |
+| **`unit_tests`** | `Optional[TestResult]` | Result of the last unit test run (output, passed). |
+
+### Nested Data Structures
+
+* **`FileInfo`**: Contains `path` (str), `content` (str).
+* **`ScanResult`**: Contains `tool` (str), `output` (str), `passed` (bool).
+* **`TestResult`**: Contains `output` (str), `passed` (bool).
+
+---
+
+## Action Space (`step`)
+
+The environment accepts a typed discriminated union of actions. The agent must pass one of the following structured JSON objects to `env.step(action)` to alter the state and fix vulnerabilities.
+
+| Action Type (`action_type`) | Required Parameters | Description |
+| :--- | :--- | :--- |
+| **`read_file`** | `filepath` (str) | Read the content of the specified file. |
+| **`search_and_replace`** | `filepath` (str), `old_snippet` (str), `new_snippet` (str) | Replace exact text in a file. |
+| **`run_security_scan`** | None | Run a security scan on the codebase. |
+| **`run_unit_tests`** | None | Run unit tests on the codebase. |
+
+## Reward Function
+
+- +0.2 for successfully reading a vulnerable file.
+- +0.3 if security scan passes (vulnerabilities patched).
+- +0.5 if unit tests pass (functionality preserved).
+- -0.2 for failed search_replace (syntax errors).
+
+## Scenarios & Tasks
+
+The environment includes three progressively difficult scenarios, fulfilling the OpenEnv task requirements. Each task features a custom deterministic grader that outputs a score between `0.0` and `1.0`.
+
+1. **Task 1: Easy (Python - The Leaked Secret)**
+   * **Vulnerability:** Hardcoded API key in Python code.
+   * **Objective:** Replace with `os.getenv()` and ensure tests pass.
+
+2. **Task 2: Medium (Python - Command Injection)**
+   * **Vulnerability:** Unsafe `subprocess.run(..., shell=True)`.
+   * **Objective:** Use safe list-based arguments with `shell=False`.
+
+3. **Task 3: Hard (C++ - Memory Safety)**
+   * **Vulnerability:** Unsafe `strcpy` causing buffer overflow.
+   * **Objective:** Replace with safe `std::string` or bounds-checking.
+
+---
+
+## Quick Start & Installation
+
+You can run this environment locally or build the included Docker container.
+
+### Option 1: Local Setup
+1. Clone the repository and navigate to the directory.
+2. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Set your OpenAI API key as an environment variable:
+   ```bash
+   export OPENAI_API_KEY="your-api-key-here"
+   ```
+
+### Option 2: Docker
+Build and run the evaluation agent inside a container:
+   ```bash
+   docker build -t devsecops-env .
+   docker run -e OPENAI_API_KEY="your-api-key-here" devsecops-env
+   ```
+
+---
+
+## Running the Autonomous Evaluation
+
+This project includes a fully autonomous baseline agent (evaluate_agent.py) that uses a ReAct loop to solve the environment dynamically.
+
+To watch the AI act as an autonomous DevSecOps engineer, run:
+   ```bash
+   python evaluate_agent.py
+   ```
+
+### Expected Output:
+The script will initialize the environment, parse the CodebaseState JSON to the LLM, and execute the LLM's structured JSON decisions until vulnerabilities are fixed and a score of 1.0 is achieved for each task.
 
 ### Nested Data Structures
 To parse the state effectively, the agent relies on the following sub-components:

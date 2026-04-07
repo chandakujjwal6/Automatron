@@ -1,8 +1,8 @@
 """
-CyberDefenseEnv: An OpenEnv compliant SOC simulator.
+DevSecOpsEnv: An OpenEnv compliant DevSecOps remediation simulator.
 """
 
-from .env import CyberDefenseEnv
+from .env import DevSecOpsEnv
 
 __version__ = "1.0.0"
-__all__ = ["CyberDefenseEnv"]
+__all__ = ["DevSecOpsEnv"]

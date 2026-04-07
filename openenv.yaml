@@ -1,11 +1,11 @@
-name: "CyberDefenseEnv"
-description: "A simulated SOC environment where an agent mitigates cyber attacks."
+name: "DevSecOpsEnv"
+description: "A simulated DevSecOps environment where an agent fixes security vulnerabilities in codebases."
 version: "1.0.0"
-entrypoint: "cyber_env.env:CyberDefenseEnv" # Format: module.file:ClassName
+entrypoint: "cyber_env.env:DevSecOpsEnv"
 tasks:
   - name: "task_1"
-    description: "Mitigate an SSH Brute Force attack."
+    description: "Fix a hardcoded API key in Python code."
   - name: "task_2"
-    description: "Eradicate a hidden cryptominer."
+    description: "Prevent command injection in Python subprocess calls."
   - name: "task_3"
-    description: "Dismantle an APT backdoor."
+    description: "Fix buffer overflow in C++ code."

@@ -1,116 +1,85 @@
-from .simulator import SimulatedServer
+from .simulator import SimulatedCodebase
 
-# --- TASK 1: EASY (SSH Brute Force) ---
-def setup_task_1(server: SimulatedServer):
-    # Inject normal logs + malicious SSH logs
-    server.logs.append({"timestamp": "10:00", "source": "sshd", "message": "Failed password for root from 192.168.1.100", "severity": "WARNING"})
-    server.logs.append({"timestamp": "10:01", "source": "sshd", "message": "Failed password for root from 192.168.1.100", "severity": "WARNING"})
-    
-def grade_task_1(server: SimulatedServer) -> float:
-    # Did they block the bad IP?
-    if "192.168.1.100" in server.firewall_blocks:
-        return 1.0
-    return 0.0
+# --- TASK 1: EASY (Python - The Leaked Secret) ---
+def setup_task_1(codebase: SimulatedCodebase):
+    codebase.files["app.py"] = """
+import os
 
-# (Repeat for Task 2 and Task 3, writing setup and grade functions)
+API_KEY = "sk-1234567890abcdef"  # Hardcoded secret
+print("API Key:", API_KEY)
+"""
+    codebase.files["test_app.py"] = """
+import os
+os.environ['API_KEY'] = 'test_key'
+def test_app():
+    import app
+    assert app.API_KEY == 'test_key'  # Should use env var
+"""
 
-from .simulator import SimulatedServer
-from .schemas import ProcessInfo, NetworkConnection
-
-# --- TASK 2: MEDIUM (Cryptominer Eradication) ---
-
-def setup_task_2(server: SimulatedServer):
-    # 1. Inject a malicious process eating 99% CPU
-    miner_pid = 31337
-    server.processes.append(
-        ProcessInfo(
-            pid=miner_pid, 
-            name="systemd-update", # Hiding in plain sight
-            user="www-data", 
-            cpu_percent=99.5, 
-            open_files=["/tmp/.hidden_miner"]
-        )
-    )
-    
-    # 2. Inject the command-and-control network connection
-    server.connections.append(
-        NetworkConnection(
-            conn_id="tcp_554", 
-            protocol="TCP", 
-            local_port=44532, 
-            remote_ip="203.0.113.50", 
-            remote_port=3333, 
-            state="ESTABLISHED", 
-            associated_pid=miner_pid
-        )
-    )
-    
-    # Push system load to critical
-    server.load = 99.9 
-
-def grade_task_2(server: SimulatedServer) -> float:
+def grade_task_1(codebase: SimulatedCodebase) -> float:
     score = 0.0
-    
-    # Did they kill the process?
-    process_dead = not any(p.pid == 31337 for p in server.processes)
-    if process_dead:
-        score += 0.4
-        
-    # Did they block the mining pool IP?
-    if "203.0.113.50" in server.firewall_blocks:
-        score += 0.6
-        
-    return score
+    if "app.py" in codebase.read_files:
+        score += 0.2
+    if codebase.security_scan and codebase.security_scan.passed:
+        score += 0.3
+    if codebase.unit_tests and codebase.unit_tests.passed:
+        score += 0.5
+    return min(score, 1.0)
 
-# --- TASK 3: HARD (APT Backdoor) ---
+# --- TASK 2: MEDIUM (Python - Command Injection) ---
+def setup_task_2(codebase: SimulatedCodebase):
+    codebase.files["utils.py"] = """
+import subprocess
 
-def setup_task_3(server: SimulatedServer):
-    # The attacker dropped a script
-    server.filesystem.append("/var/tmp/revshell.sh")
-    
-    # It executes via a hidden cron job, leaving a clue in the logs
-    server.logs.append(
-        {"timestamp": "03:00", "source": "CRON", "message": "CMD (/var/tmp/revshell.sh)", "severity": "INFO"}
-    )
-    
-    # The active reverse shell process
-    apt_pid = 1337
-    server.processes.append(
-        ProcessInfo(
-            pid=apt_pid, 
-            name="bash", 
-            user="www-data", 
-            cpu_percent=0.1, # Sneaky, low CPU
-            open_files=["/var/tmp/revshell.sh"]
-        )
-    )
-    
-    # The active connection back to the attacker's machine
-    server.connections.append(
-        NetworkConnection(
-            conn_id="tcp_999", 
-            protocol="TCP", 
-            local_port=54321, 
-            remote_ip="198.51.100.99", 
-            remote_port=4444, 
-            state="ESTABLISHED", 
-            associated_pid=apt_pid
-        )
-    )
+def run_command(user_input):
+    subprocess.run(user_input, shell=True)  # Vulnerable
+"""
+    codebase.files["test_utils.py"] = """
+def test_run_command():
+    from utils import run_command
+    # Test safe input
+    run_command(["echo", "hello"])
+"""
 
-def grade_task_3(server: SimulatedServer) -> float:
+def grade_task_2(codebase: SimulatedCodebase) -> float:
     score = 0.0
-    
-    # 1. Did they kill the reverse shell?
-    if not any(p.pid == 1337 for p in server.processes):
+    if "utils.py" in codebase.read_files:
+        score += 0.2
+    if codebase.security_scan and codebase.security_scan.passed:
         score += 0.3
-        
-    # 2. Did they block the attacker's IP?
-    if "198.51.100.99" in server.firewall_blocks:
+    if codebase.unit_tests and codebase.unit_tests.passed:
+        score += 0.5
+    return min(score, 1.0)
+
+# --- TASK 3: HARD (C++ - Memory Safety) ---
+def setup_task_3(codebase: SimulatedCodebase):
+    codebase.files["main.cpp"] = """
+#include <cstring>
+
+void copy_string(char* dest, const char* src) {
+    strcpy(dest, src);  // Buffer overflow risk
+}
+"""
+    codebase.files["test_main.cpp"] = """
+// Assume compiled and tested
+"""
+
+def grade_task_3(codebase: SimulatedCodebase) -> float:
+    score = 0.0
+    if "main.cpp" in codebase.read_files:
+        score += 0.2
+    if codebase.security_scan and codebase.security_scan.passed:
         score += 0.3
-        
-    # 3. Did they delete the malicious script?
-    if "/var/tmp/revshell.sh" not in server.filesystem:
-        score += 0.4
-        
-    return score
+    if codebase.unit_tests and codebase.unit_tests.passed:
+        score += 0.5
+    return min(score, 1.0)
+
+def grade_task_3(codebase: SimulatedCodebase) -> float:
+    score = 0.0
+    if "main.cpp" in codebase.read_files:
+        score += 0.2
+    if codebase.security_scan and codebase.security_scan.passed:
+        score += 0.3
+    if codebase.unit_tests and codebase.unit_tests.passed:
+        score += 0.5
+    return min(score, 1.0)

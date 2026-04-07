@@ -1,123 +1,124 @@
 import os
 import json
 from openai import OpenAI
-from pydantic import ValidationError
 
 # Import your environment and schemas
-from cyber_env.env import CyberDefenseEnv
+from cyber_env.env import DevSecOpsEnv
 from cyber_env.schemas import (
-    KillProcessAction, BlockIPAction, DeleteFileAction, 
-    RestartServiceAction, WaitAction
+    ReadFileAction, SearchReplaceAction, RunSecurityScanAction, RunUnitTestsAction
 )
 
-# Initialize the LLM Client using the Gemini API compatibility endpoint
-# Replace this entire block
+# Initialize the LLM Client using OpenAI API
 client = OpenAI(
-    api_key="GEMINI_API_KEY", # <--- Hardcoded here!
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+    api_key=os.getenv("OPENAI_API_KEY")
 )
 
-# Define the models we want the LLM to know about
-AVAILABLE_ACTIONS = {
-    "kill_process": KillProcessAction.model_json_schema(),
-    "block_ip": BlockIPAction.model_json_schema(),
-    "delete_file": DeleteFileAction.model_json_schema(),
-    "restart_service": RestartServiceAction.model_json_schema(),
-    "wait": WaitAction.model_json_schema()
-}
+def run_autonomous_agent(task_name: str, max_steps: int = 10):
+    """Run the autonomous DevSecOps agent on a specific task."""
+    print(f"\n{'='*60}")
+    print(f"Starting Autonomous Evaluation for {task_name.upper()}")
+    print(f"{'='*60}\n")
+    
+    env = DevSecOpsEnv(task_name=task_name)
+    
+    # System prompt for the LLM
+    system_prompt = """You are a DevSecOps AI fixing code vulnerabilities.
 
-def run_autonomous_agent(task_name: str, max_steps: int = 5):
-    print(f"\nStarting Autonomous Evaluation for {task_name.upper()}...")
-    env = CyberDefenseEnv(task_name=task_name)
-    
-    # The System Prompt tells the LLM how to behave and what its constraints are
-    system_prompt = f"""
-    You are an autonomous Security Operations Center (SOC) agent.
-    Your goal is to neutralize cyber threats on a Linux server without breaking legitimate services.
-    
-    You will be provided with the current ServerState in JSON format.
-    Analyze the processes, connections, and logs to identify threats.
-    
-    You MUST respond with a SINGLE valid JSON object representing your chosen action.
-    Do NOT include markdown formatting, backticks, or conversational text. Just the JSON.
-    
-    Here are the JSON schemas for the actions you are allowed to take:
-    {json.dumps(AVAILABLE_ACTIONS, indent=2)}
-    """
+Available actions:
+- read_file (filepath: str)
+- search_and_replace (filepath: str, old_snippet: str, new_snippet: str)
+- run_security_scan ()
+- run_unit_tests ()
+
+Respond with valid JSON only. Example: {"action_type": "read_file", "filepath": "app.py"}"""
 
     for step in range(max_steps):
-        print(f"\n--- Step {step + 1} ---")
-        
-        # 1. Observe the State
-        current_state = env.state()
-        state_json = current_state.model_dump_json(indent=2)
-        print(f"Server Load: {current_state.system_load}% | Score: {env.score()}")
+        print(f"[Step {step + 1}] Current Score: {env.score():.2f}")
         
         # Check for early win
         if env.score() >= 1.0:
-            print("Threat completely neutralized! Agent wins.")
+            print("\nAll vulnerabilities fixed! Agent wins.")
             break
 
-        # 2. Prompt the LLM
+        # Observe the state
+        current_state = env.state()
+        state_json = current_state.model_dump_json(indent=2)
+        
+        # Ask LLM for next action
         print("Agent is thinking...")
         try:
             response = client.chat.completions.create(
-                model="gemini-2.5-flash", # Using the fast, reasoning-optimized Gemini model
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"CURRENT STATE:\n{state_json}\n\nWhat is your next action (output raw JSON)?"}
+                    {"role": "user", "content": f"CURRENT STATE:\n{state_json}\n\nWhat is your next action? Respond with JSON only."}
                 ],
-                temperature=0.1 # Low temperature for logical, deterministic choices
+                temperature=0.1,
+                max_tokens=500
             )
             
-            # Extract the JSON string from the LLM's response
+            # Extract and parse the JSON response
             llm_output = response.choices[0].message.content.strip()
             
-            # Clean up markdown if the LLM hallucinated it despite instructions
-            if llm_output.startswith("```json"):
-                llm_output = llm_output[7:-3].strip()
-            elif llm_output.startswith("```"):
-                llm_output = llm_output[3:-3].strip()
-                
-            action_dict = json.loads(llm_output)
-            print(f"Agent Decided: {json.dumps(action_dict)}")
+            # Remove markdown code blocks if present
+            if llm_output.startswith("```"):
+                llm_output = llm_output.split("```")[1]
+                if llm_output.startswith("json"):
+                    llm_output = llm_output[4:]
+                llm_output = llm_output.strip()
             
-            # 3. Validate and Act
+            # Parse JSON
+            action_dict = json.loads(llm_output)
             action_type = action_dict.get("action_type")
             
-            if action_type == "kill_process":
-                action = KillProcessAction(**action_dict)
-            elif action_type == "block_ip":
-                action = BlockIPAction(**action_dict)
-            elif action_type == "delete_file":
-                action = DeleteFileAction(**action_dict)
-            elif action_type == "restart_service":
-                action = RestartServiceAction(**action_dict)
-            elif action_type == "wait":
-                action = WaitAction(**action_dict)
+            print(f"Agent Action: {action_type}")
+            
+            # Execute action
+            if action_type == "read_file":
+                action = ReadFileAction(**action_dict)
+            elif action_type == "search_and_replace":
+                action = SearchReplaceAction(**action_dict)
+            elif action_type == "run_security_scan":
+                action = RunSecurityScanAction(**action_dict)
+            elif action_type == "run_unit_tests":
+                action = RunUnitTestsAction(**action_dict)
             else:
-                print(f"LLM chose an invalid action type: {action_type}")
-                env.step(WaitAction(duration=5))
+                print(f"Invalid action type: {action_type}")
                 continue
+            
+            # Step the environment
+            observation, reward, done, info = env.step(action)
+            print(f"Reward: {reward:+.2f} | Done: {done}\n")
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing failed: {e}")
+            print(f"LLM output: {llm_output if 'llm_output' in locals() else 'N/A'}\n")
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            if 'llm_output' in locals():
+                print(f"LLM output: {llm_output}\n")
+    
+    # Final score
+    final_score = env.score()
+    print(f"{'='*60}")
+    print(f"Final Score for {task_name}: {final_score:.2f}")
+    print(f"{'='*60}\n")
+    return final_score
 
-            # Execute the validated Pydantic action in the environment
-            env.step(action)
-            
-        except json.JSONDecodeError:
-            print(f"Agent failed to output valid JSON. Raw output: {llm_output}")
-            env.step(WaitAction(duration=5)) # Penalty wait
-        except ValidationError as e:
-            print(f"Agent output invalid parameters for the action: {e}")
-            env.step(WaitAction(duration=5)) # Penalty wait
-            
-    print(f"\nFinal Evaluation Score for {task_name}: {env.score()}")
 
 if __name__ == "__main__":
-    print("Bypassing environment checks, using hardcoded API key...")
+    # Run evaluation on Task 1
+    print("DevSecOps Remediation Sandbox - Autonomous Agent Evaluation\n")
     
-    # Run the agent against Task 1
-    run_autonomous_agent(task_name="task_1", max_steps=3)
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print("ERROR: OPENAI_API_KEY environment variable not set!")
+        print("Set it with: export OPENAI_API_KEY='your-key'")
+        exit(1)
     
-    # Uncomment to run against the harder tasks later:
-    run_autonomous_agent(task_name="task_2", max_steps=5)
-    run_autonomous_agent(task_name="task_3", max_steps=8)
+    score = run_autonomous_agent("task_1", max_steps=10)
+    
+    if score >= 1.0:
+        print("SUCCESS: Task 1 completed!")
+    else:
+        print(f"INCOMPLETE: Task 1 score is {score:.2f}/1.0")

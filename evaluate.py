@@ -1,15 +1,21 @@
-from cyber_env.env import CyberDefenseEnv
-from cyber_env.schemas import BlockIPAction
+from cyber_env.env import DevSecOpsEnv
+from cyber_env.schemas import ReadFileAction, SearchReplaceAction, RunSecurityScanAction, RunUnitTestsAction
 
 # Initialize the env
-env = CyberDefenseEnv(task_name="task_1")
+env = DevSecOpsEnv(task_name="task_1")
 
-# Show initial state
-print("Initial Logs:", env.state().recent_logs)
+# Example actions
+action1 = ReadFileAction(filepath="app.py")
+env.step(action1)
 
-# Agent decides to act (Hardcoded baseline for demonstration)
-action = BlockIPAction(ip_address="192.168.1.100")
-env.step(action)
+action2 = SearchReplaceAction(filepath="app.py", old_snippet='API_KEY = "sk-1234567890abcdef"', new_snippet="API_KEY = os.getenv('API_KEY')")
+env.step(action2)
+
+action3 = RunSecurityScanAction()
+env.step(action3)
+
+action4 = RunUnitTestsAction()
+env.step(action4)
 
 # Print Final Score
-print("Final Score:", env.score()) # Should print 1.0
+print("Final Score:", env.score())  # Should be 1.0
