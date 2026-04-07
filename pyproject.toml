@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cyberdefense-openenv"
+version = "1.0.0"
+description = "DevSecOps Remediation Sandbox - An OpenEnv environment for autonomous agent security vulnerability remediation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "DevSecOps Team"}]
+keywords = ["openenv", "devsecops", "security", "vulnerabilities", "agent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: No Input/Output (Daemon)",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "openenv>=0.1.0",
+    "pydantic>=2.0.0",
+    "openai>=1.0.0",
+    "flask>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=22.0",
+    "flake8>=4.0",
+]
+
+[tool.setuptools]
+packages = ["cyber_env"]
+
+[project.urls]
+Repository = "https://github.com/chandakujjwal6/Automatron"
+Documentation = "https://github.com/chandakujjwal6/Automatron#readme"
