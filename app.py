@@ -58,13 +58,9 @@ def get_result():
         "running": state["running"],
         "result": state["last_result"]
     }), 200
+@app.get("/")
+def index():
+    return jsonify({"status": "online"}), 200
 
 if __name__ == "__main__":
-    # Run inference automatically on startup
-    print("Starting DevSecOps Sandbox Server...")
-    print("Running inference...")
-    result = subprocess.run(["python", "inference.py"], capture_output=False)
-    print("\nInference complete. Starting HF Space server on port 7860...")
-    
-    # Start server for HF Space validator
     app.run(host="0.0.0.0", port=7860, debug=False)
