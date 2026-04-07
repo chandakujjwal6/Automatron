@@ -7,6 +7,9 @@ pydantic>=2.0.0
 # For baseline LLM agent
 openai
 
+# For HF Space server
+flask
+
 # Optional: For actual SAST tools if we want real scans
 # bandit
 # semgrep

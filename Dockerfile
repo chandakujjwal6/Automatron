@@ -12,5 +12,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Command to run your evaluation or a simple UI
-CMD ["python", "evaluate_agent.py"]
+# Set default environment variables for inference
+ENV API_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/"
+ENV MODEL_NAME="gemini-2.5-flash-lite"
+
+# Expose port for HF Space
+EXPOSE 7860
+
+# Run inference with Flask server for HF Space validator
+CMD ["python", "app.py"]
