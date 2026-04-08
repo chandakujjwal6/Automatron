@@ -16,6 +16,7 @@ COPY . .
 ENV API_BASE_URL="https://api.openai.com/v1"
 ENV MODEL_NAME="gpt-4o-mini"
 
+# Expose port for HF Space
 EXPOSE 7860
 
 # Run inference with Flask server for HF Space validator
