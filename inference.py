@@ -27,37 +27,20 @@ if not HF_TOKEN:
 # LOGGING FUNCTIONS (Per spec)
 # ============================================================================
 
-def log_start(model: str, tasks: list) -> None:
-    """Log inference start."""
-    data = {
-        "type": "START",
-        "model": model,
-        "tasks": tasks
-    }
-    print(json.dumps(data))
+def log_start(task_name: str) -> None:
+    """Log inference start with [START] marker."""
+    print(f"[START] task={task_name}", flush=True)
 
-def log_step(step: int, action: str, reward: float, done: bool, error: str = None) -> None:
-    """Log individual step. Matches sample format exactly."""
-    data = {
-        "type": "STEP",
-        "step": step,
-        "action": action,
-        "reward": reward,
-        "done": done
-    }
+def log_step(step: int, reward: float, done: bool, error: str = None) -> None:
+    """Log individual step with [STEP] marker."""
     if error:
-        data["error"] = error
-    print(json.dumps(data))
+        print(f"[STEP] step={step} reward={reward:.2f} done={done} error={error}", flush=True)
+    else:
+        print(f"[STEP] step={step} reward={reward:.2f} done={done}", flush=True)
 
-def log_end(success: bool, score: float, steps: int) -> None:
-    """Log inference end."""
-    data = {
-        "type": "END",
-        "success": success,
-        "score": score,
-        "steps": steps
-    }
-    print(json.dumps(data))
+def log_end(task_name: str, score: float, steps: int) -> None:
+    """Log inference end with [END] marker."""
+    print(f"[END] task={task_name} score={score:.2f} steps={steps}", flush=True)
 
 # ============================================================================
 # INFERENCE LOOP
@@ -72,10 +55,6 @@ def main():
         base_url=API_BASE_URL
     )
     
-    # Log START
-    tasks_list = ["task_1", "task_2", "task_3"]
-    log_start(MODEL_NAME, tasks_list)
-    
     # System prompt for agent
     system_prompt = """You are a DevSecOps engineer fixing security vulnerabilities.
 
@@ -88,20 +67,26 @@ Actions available:
 Respond with JSON only: {"action_type": "...", ...}"""
     
     max_steps_per_task = 10
-    total_rewards = []
-    total_steps = 0
+    
+    tasks_list = ["task_1", "task_2", "task_3"]
     
     for task_name in tasks_list:
+        # Log task start
+        log_start(task_name)
+        
         env = DevSecOpsEnv(task_name=task_name)
         env.reset()
         
+        task_rewards = []
+        step_count = 0
+        
         for step in range(1, max_steps_per_task + 1):
-            total_steps += 1
+            step_count += 1
             current_score = env.score()
             
             # Early exit if task complete
             if current_score >= 1.0:
-                log_step(step=step, action="COMPLETE", reward=0.0, done=True)
+                log_step(step=step_count, reward=0.0, done=True)
                 break
             
             # Get current state
@@ -141,22 +126,20 @@ Respond with JSON only: {"action_type": "...", ...}"""
                 action = action_map[action_type](**action_dict)
                 obs, reward, done, info = env.step(action)
                 
-                total_rewards.append(reward)
+                task_rewards.append(reward)
                 
-                log_step(step=step, action=action_type, reward=reward, done=done)
+                log_step(step=step_count, reward=reward, done=done)
                 
                 if done:
                     break
                     
             except Exception as e:
-                log_step(step=step, action="ERROR", reward=0.0, done=False, error=str(e))
-    
-    # Final score calculation
-    final_score = sum(total_rewards) / len(total_rewards) if total_rewards else 0.0
-    final_score = min(max(final_score, 0.0), 1.0)
-    success = final_score >= 0.5
-    
-    log_end(success=success, score=final_score, steps=total_steps)
+                log_step(step=step_count, reward=0.0, done=False, error=str(e))
+        
+        # Log task end
+        task_score = sum(task_rewards) / len(task_rewards) if task_rewards else 0.0
+        task_score = min(max(task_score, 0.0), 1.0)
+        log_end(task_name=task_name, score=task_score, steps=step_count)
 
 if __name__ == "__main__":
     main()
