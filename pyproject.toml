@@ -38,8 +38,11 @@ dev = [
     "flake8>=4.0",
 ]
 
+[project.scripts]
+cyberdefense-server = "server.app:app"
+
 [tool.setuptools]
-packages = ["cyber_env"]
+packages = ["cyber_env", "server"]
 
 [project.urls]
 Repository = "https://github.com/chandakujjwal6/Automatron"
