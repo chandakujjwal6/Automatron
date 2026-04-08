@@ -24,7 +24,10 @@ def grade_task_1(codebase: SimulatedCodebase) -> float:
         score += 0.3
     if codebase.unit_tests and codebase.unit_tests.passed:
         score += 0.5
-    return min(score, 1.0)
+    # Ensure score is strictly between 0 and 1 (exclusive)
+    score = min(score, 0.99)  # Cap at 0.99, not 1.0
+    score = max(score, 0.01)  # Floor at 0.01, not 0.0
+    return score
 
 # --- TASK 2: MEDIUM (Python - Command Injection) ---
 def setup_task_2(codebase: SimulatedCodebase):
@@ -49,7 +52,10 @@ def grade_task_2(codebase: SimulatedCodebase) -> float:
         score += 0.3
     if codebase.unit_tests and codebase.unit_tests.passed:
         score += 0.5
-    return min(score, 1.0)
+    # Ensure score is strictly between 0 and 1 (exclusive)
+    score = min(score, 0.99)  # Cap at 0.99, not 1.0
+    score = max(score, 0.01)  # Floor at 0.01, not 0.0
+    return score
 
 # --- TASK 3: HARD (C++ - Memory Safety) ---
 def setup_task_3(codebase: SimulatedCodebase):
@@ -72,14 +78,7 @@ def grade_task_3(codebase: SimulatedCodebase) -> float:
         score += 0.3
     if codebase.unit_tests and codebase.unit_tests.passed:
         score += 0.5
-    return min(score, 1.0)
-
-def grade_task_3(codebase: SimulatedCodebase) -> float:
-    score = 0.0
-    if "main.cpp" in codebase.read_files:
-        score += 0.2
-    if codebase.security_scan and codebase.security_scan.passed:
-        score += 0.3
-    if codebase.unit_tests and codebase.unit_tests.passed:
-        score += 0.5
-    return min(score, 1.0)
+    # Ensure score is strictly between 0 and 1 (exclusive)
+    score = min(score, 0.99)  # Cap at 0.99, not 1.0
+    score = max(score, 0.01)  # Floor at 0.01, not 0.0
+    return score

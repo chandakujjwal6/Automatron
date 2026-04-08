@@ -137,8 +137,9 @@ Respond with JSON only: {"action_type": "...", ...}"""
                 log_step(step=step_count, reward=0.0, done=False, error=str(e))
         
         # Log task end
-        task_score = sum(task_rewards) / len(task_rewards) if task_rewards else 0.0
-        task_score = min(max(task_score, 0.0), 1.0)
+        task_score = sum(task_rewards) / len(task_rewards) if task_rewards else 0.01
+        # Ensure score is strictly between 0 and 1 (exclusive)
+        task_score = min(max(task_score, 0.01), 0.99)
         log_end(task_name=task_name, score=task_score, steps=step_count)
 
 if __name__ == "__main__":
