@@ -39,16 +39,50 @@ class SimulatedCodebase:
         # For simplicity, check for common issues
         output = ""
         passed = True
+        
+        # Check for hardcoded secrets (stricter)
         for path, content in self.files.items():
-            if "sk-" in content or "password" in content.lower():
-                output += f"High: Hardcoded secret in {path}\n"
-                passed = False
+            if "sk-" in content or "password" in content.lower() or "api_key" in content.lower():
+                # But allow if it's in tests or env files with proper pattern
+                if "test" not in path and ".env" not in path:
+                    output += f"High: Hardcoded secret in {path}\n"
+                    passed = False
+            
+            # Command injection check
             if "subprocess.run" in content and "shell=True" in content:
                 output += f"High: Command injection in {path}\n"
                 passed = False
+            
+            # SQL Injection check
+            if "f\"SELECT" in content or "f'SELECT" in content:
+                output += f"High: SQL injection vulnerability in {path}\n"
+                passed = False
+            
+            # NoSQL Injection check
+            if "ObjectId(user_input)" in content or "{\"_id\": user_input}" in content:
+                output += f"High: NoSQL injection vulnerability in {path}\n"
+                passed = False
+            
+            # Cryptographic weaknesses
+            if "hashlib.md5" in content or "MD5(" in content:
+                output += f"High: Weak cryptography (MD5) in {path}\n"
+                passed = False
+            
+            if "random.randint" in content or "random.choice" in content:
+                output += f"High: Weak random number generation in {path}\n"
+                passed = False
+            
+            if "salt = " in content and "\"" in content and ".py" in path:
+                # Check if salt is hardcoded, not if it's just a comment
+                if "salt = \"" in content or "salt = '" in content:
+                    output += f"High: Hardcoded salt in {path}\n"
+                    passed = False
+            
+            # Buffer overflow check
             if "strcpy" in content and ".cpp" in path:
                 output += f"High: Unsafe strcpy in {path}\n"
                 passed = False
+        
         self.security_scan = ScanResult(tool="bandit", output=output, passed=passed)
 
     def run_unit_tests(self):
