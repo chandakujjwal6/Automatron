@@ -39,7 +39,7 @@ dev = [
 ]
 
 [project.scripts]
-cyberdefense-server = "server.app:app"
+cyberdefense-server = "server.app:main"
 
 [tool.setuptools]
 packages = ["cyber_env", "server"]

@@ -63,5 +63,9 @@ def get_result():
 def index():
     return jsonify({"status": "online"}), 200
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the Flask server."""
     app.run(host="0.0.0.0", port=7860, debug=False)
+
+if __name__ == "__main__":
+    main()
